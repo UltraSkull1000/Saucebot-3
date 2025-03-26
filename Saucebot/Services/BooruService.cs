@@ -20,8 +20,12 @@ namespace Saucebot.Services
             if (cache.ContainsKey($"r34:{tags}"))
             {
                 Queue<R34Post>? cached = GetCached(site, tags);
-                R34Post random = cached.Dequeue();
-                return random;
+                if (cached != null)
+                {
+                    R34Post random = cached.Dequeue();
+                    return random;
+                }
+                else throw new NullReferenceException($"Unable to fetch cached images.");
             }
 
             string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}";
@@ -35,7 +39,8 @@ namespace Saucebot.Services
         static Queue<R34Post>? GetCached(Site site, string tags)
         {
             var c34 = cache[$"r34:{tags}"];
-            if (c34.Count() < 1) {
+            if (c34.Count() < 1)
+            {
                 string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}";
                 var q = GetNewPage(uri, site, tags).GetAwaiter().GetResult();
                 cache[$"r34:{tags}"] = q;
@@ -62,6 +67,10 @@ namespace Saucebot.Services
                 string json = await resp.Content.ReadAsStringAsync();
 
                 var r34R = JsonConvert.DeserializeObject<List<R34Post>>(json);
+                if (r34R == null)
+                {
+                    throw new NullReferenceException("Unable to convert json into proper list.");
+                }
                 var r34q = new Queue<R34Post>(r34R.OrderBy(x => rand.Next()));
                 pagenum.Add(uri, 0);
                 return r34q;
@@ -83,12 +92,19 @@ namespace Saucebot.Services
             string json = await resp.Content.ReadAsStringAsync();
 
             var r34R = JsonConvert.DeserializeObject<List<R34Post>>(json);
+            if (r34R == null)
+            {
+                throw new NullReferenceException("Unable to convert json into proper list.");
+            }
             return r34R.First();
         }
 
-        public static string[] GetTags(string search)
+        public static string?[]? GetTags(string search)
         {
-            return TagService.GetTags(search).GetAwaiter().GetResult();
+            var tags = TagService.GetTags(search).GetAwaiter().GetResult();
+            if(tags == null)
+                throw new NullReferenceException("Tag list returned empty.");
+            return tags;
         }
 
         public static async Task<Queue<R34Post>> GetRelated(int parentid)
@@ -104,6 +120,10 @@ namespace Saucebot.Services
             string json = await resp.Content.ReadAsStringAsync();
 
             var r34R = JsonConvert.DeserializeObject<List<R34Post>>(json);
+            if (r34R == null)
+            {
+                throw new NullReferenceException("Unable to convert json into proper list.");
+            }
             var r34Q = new Queue<R34Post>(r34R);
             cache.Add($"collection:{parentid}", r34Q);
             return r34Q;

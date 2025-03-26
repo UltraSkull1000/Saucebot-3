@@ -10,7 +10,7 @@ namespace Saucebot.Services
             BaseAddress = new Uri("https://ac.rule34.xxx/")
         };
 
-        public static async Task<string[]> GetTags(string query = "")
+        public static async Task<string?[]?> GetTags(string query = "")
         {
             if (query == "")
             { // User has not input a tag yet
@@ -24,7 +24,11 @@ namespace Saucebot.Services
                     throw new WebException(resp.ReasonPhrase);
                 }
                 string jsonResponse = await resp.Content.ReadAsStringAsync();
-                return Tag.FromJson(jsonResponse).Select(x => x.Value).ToArray();
+                var actags = Tag.FromJson(jsonResponse);
+                if(actags == null)
+                    throw new NullReferenceException("No tags that match the query.");
+                var array = actags.Select(x => x.Value).ToArray();
+                return array;
             }
         }
 
@@ -62,18 +66,18 @@ namespace QuickType
     public partial class Tag
     {
         [JsonProperty("label")]
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
         [JsonProperty("value")]
-        public string Value { get; set; }
+        public string? Value { get; set; }
 
         [JsonProperty("type")]
-        public string Type { get; set; }
+        public string? Type { get; set; }
     }
 
     public partial class Tag
     {
-        public static Tag[] FromJson(string json) => JsonConvert.DeserializeObject<Tag[]>(json, QuickType.Converter.Settings);
+        public static Tag[]? FromJson(string json) => JsonConvert.DeserializeObject<Tag[]>(json, QuickType.Converter.Settings);
     }
 
     public static class Serialize

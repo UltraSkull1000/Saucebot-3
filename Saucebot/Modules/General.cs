@@ -17,9 +17,13 @@ namespace Saucebot.Modules
             {
                 var data = ((string)autocompleteInteraction.Data.Current.Value).Split(' ');
                 string search = data.Last();
-                string[] tags = await TagService.GetTags(search);
+                string?[]? tags = await TagService.GetTags(search);
+                if(tags == null)
+                    throw new NullReferenceException("GetTags returned no results");
                 List<AutocompleteResult> results = new List<AutocompleteResult>();
-                foreach (string tag in tags){
+                foreach (string? tag in tags){
+                    if(tag == null)
+                        continue;
                     results.Add(new AutocompleteResult(tag,tag));
                 }
                 return AutocompletionResult.FromSuccess(results);
@@ -30,7 +34,7 @@ namespace Saucebot.Modules
         public async Task Rule34([Summary("tags"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "", bool useDefaultFilters = true)
         {
             if(useDefaultFilters)
-                tags += " rating:explicit -ai_generated -incest -scat";
+                tags += " -ai_generated -incest -scat";
             var image = await BooruService.GetImage(BooruService.Site.Rule34, tags);
             var builder = await ComponentService.GetPostComponents(image, tags);
             await RespondAsync(image.file_url, components:builder.Build());
