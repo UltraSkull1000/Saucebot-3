@@ -1,10 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Saucebot.Services;
 using ConnectionState = Discord.ConnectionState;
 
 //Created by McElroy Ruman https://github.com/UltraSkull1000
-//Link to Repository: https://github.com/UltraSkull1000/Saucebot-V2
+//Link to Repository: https://github.com/UltraSkull1000/Saucebot-3
 
 namespace Saucebot
 {
@@ -12,10 +11,17 @@ namespace Saucebot
     {
         public static DiscordSocketClient? _client; // Client for interacting with Discord
         public static CommandHandler? _commandHandler; // Class for accepting events from the Client and executing commands and interactions.
+        private static string currentLog = "";
 
         public static void Main() => MainAsync().GetAwaiter().GetResult();
         public static async Task MainAsync()
         {
+            if(!Directory.Exists("logs")) // Create logs folder, if it does not exist.
+                Directory.CreateDirectory("logs");
+
+            currentLog = $"log_{DateTime.Now.ToFileTimeUtc()}.txt"; // Name and Create current log file. Opens and closes in order to preserve integrity
+            File.Create($"logs/{currentLog}").Close();
+
             if (!File.Exists("token.txt")) // Checking if the token has been saved for the bot yet
             {
                 Console.Write("Please Enter your Bot's Token: "); 
@@ -49,13 +55,13 @@ namespace Saucebot
 
         private static Task LogGuildLeave(SocketGuild arg) // Logs when the CurrentUser has left or been removed from a Guild/Server
         {
-            Print($"Left Guild {arg.Name} <{arg.Id}>", ConsoleColor.Red);
+            Print($"Left Guild {arg.Name}", ConsoleColor.Red);
             return Task.CompletedTask;
         }
 
         private static Task LogGuildJoin(SocketGuild arg) // Logs when the CurrentUser has been added to a Guild/Server
         {
-            Print($"Joined Guild {arg.Name} <{arg.Id}> owned by {arg.Owner.Username} <@{arg.OwnerId}>", ConsoleColor.Blue);
+            Print($"Joined Guild {arg.Name}", ConsoleColor.Blue);
             return Task.CompletedTask;
         }
 
@@ -84,6 +90,9 @@ namespace Saucebot
                 Console.Write($"{DateTime.Now.ToLocalTime()} >> ");
             Console.ForegroundColor = color;
             Console.WriteLine(message);
+            using (var Writer = File.AppendText($"logs/{currentLog}")){
+                Writer.WriteLine($"{DateTime.Now.ToLocalTime()} >> {message}");
+            }
             Console.ResetColor();
         }
     }

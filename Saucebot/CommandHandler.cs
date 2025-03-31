@@ -33,13 +33,18 @@ namespace Saucebot
         private async Task HandleSelectMenu(SocketMessageComponent arg) // Handles Select menu components from Interactions
         {
             var cid = arg.Data.CustomId;
+            Program.Print($"{arg.User.Username} -> {cid}", ConsoleColor.DarkGray);
             if (cid.StartsWith("manytags:"))
             {
                 cid = arg.Data.Values.First();
-                var payload = cid.Substring(5).Split('|');
+                var payload = cid.Substring(9).Split('|');
                 string id = payload[0];
                 int page = int.Parse(payload[1]);
                 var image = await BooruService.GetPostById(id);
+                if (image.tags == null)
+                {
+                    throw new NullReferenceException("Image Tags are Blank.");
+                }
                 var tags = image.tags.Split(' ');
                 string output = "";
                 foreach (var t in tags.Skip(page * 15).Take(15))
@@ -67,7 +72,7 @@ namespace Saucebot
                 List<R34Post> images = new List<R34Post>();
                 for (int i = 0; i < count; i++)
                 {
-                    var image = await BooruService.GetImage(BooruService.Site.Rule34, tags); //fetches the next image from the booru service
+                    var image = await BooruService.GetImage(tags); //fetches the next image from the booru service
                     if (image == null && i == 0) //no more images left in the tag, or image fetching failed.
                     {
                         await arg.RespondAsync($"No more images with those tags!", ephemeral: true);
@@ -80,9 +85,10 @@ namespace Saucebot
                     images.Add(image);
                 }
                 var builder = await ComponentService.GetPostComponents(images, tags); //fetches the button components from the component service
+                string content = images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : $"[Link]({images.First().file_url})"; // Generates Message Content inline. 
                 if (arg.IsDMInteraction) //user is executing this command within a dm, so threads dont exist
                 {
-                    await arg.RespondAsync(images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : images.First().file_url, components: builder.Build());
+                    await arg.RespondAsync(content, components: builder.Build());
                     return;
                 }
                 if ((arg.Channel as IThreadChannel) == null) //we arent in a dm, and we arent in a thread
@@ -95,15 +101,15 @@ namespace Saucebot
                         await arg.RespondAsync($"Creating thread...", ephemeral: true);
                         var newThread = await channel.CreateThreadAsync($"{tags.Split(' ')[0]}", ThreadType.PublicThread, ThreadArchiveDuration.OneHour, arg.Message);
                         await newThread.SendMessageAsync($"Tags: `{string.Join("`, `", t.Take(t.Count() - 3))}`");
-                        await newThread.SendMessageAsync(images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : images.First().file_url, components: builder.Build());
+                        await newThread.SendMessageAsync(content, components: builder.Build());
                     }
                     else
                     {
                         await arg.DeferAsync();
-                        await arg.Message.Thread.SendMessageAsync(images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : images.First().file_url, components: builder.Build());
+                        await arg.Message.Thread.SendMessageAsync(content, components: builder.Build());
                     }
                 }
-                else await arg.RespondAsync(images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : images.First().file_url, components: builder.Build()); //we are in a thread
+                else await arg.RespondAsync(content, components: builder.Build()); //we are in a thread
             }
             if (cid.StartsWith("tags:"))
             {
@@ -111,6 +117,10 @@ namespace Saucebot
                 string id = payload[0];
                 int page = int.Parse(payload[1]);
                 var image = await BooruService.GetPostById(id);
+                if (image.tags == null)
+                {
+                    throw new NullReferenceException("Image Tags are Blank.");
+                }
                 var tags = image.tags.Split(' ');
                 string output = "";
                 foreach (var t in tags.Skip(page * 15).Take(15))
@@ -126,16 +136,37 @@ namespace Saucebot
                 await arg.Message.DeleteAsync();
                 await arg.DeferAsync();
             }
-            if (cid.StartsWith("save:")){
-                try{
+            if (cid.StartsWith("save:"))
+            {
+                try
+                {
+                    var message = arg.Message.Content;
+                    if(cid.Substring(5) != "")
+                        message = cid.Substring(5);
                     var builder = await ComponentService.GetDMComponents();
-                    await arg.User.SendMessageAsync(arg.Message.Content, components: builder.Build());
-                    await arg.DeferAsync();
+                    await arg.User.SendMessageAsync(message, components: builder.Build());
                 }
-                catch(Exception e){
+                catch (Exception e)
+                {
                     await arg.RespondAsync("Can't send you a message!");
                     Program.Print(e.Message, ConsoleColor.DarkGray);
                 }
+            }
+            if(cid.StartsWith("details:")){
+                var payload = cid.Substring(8).Split('|');
+                int page = int.Parse(payload.Last());
+                string[] ids = payload.First().Split('-');
+                EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, out var components, out var url);
+                if(arg.Message.Content.StartsWith("details:")) {
+                    await arg.DeferAsync();
+                    await arg.Message.ModifyAsync(x => {
+                        x.Content = $"details:{ids[page]}\n{$"[Link]({url})"}";
+                        x.Embed = embed.Build();
+                        x.Components = components.Build();
+                    });
+                }
+                else
+                    await arg.RespondAsync($"details:{ids[page]}\n{$"[Link]({url})"}", embed: embed.Build(), components: components.Build());
             }
         }
 

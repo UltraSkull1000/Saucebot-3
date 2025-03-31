@@ -38,6 +38,7 @@ namespace Saucebot.Services
                 var row1 = new ActionRowBuilder()
                     .WithButton("Another!~", $"r34:{tags}", ButtonStyle.Success, PickNext())
                     .WithButton("Link", url: $"https://rule34.xxx/index.php?page=post&s=view&id={image.id}", style: ButtonStyle.Link)
+                    .WithButton("Info...", $"details:{image.id}|0", ButtonStyle.Primary)
                     .WithButton("x5!~", $"may:{tags}", ButtonStyle.Success, PickNext());
                 var row2 = new ActionRowBuilder()
                     .WithButton("＋", $"save:", ButtonStyle.Success)
@@ -90,7 +91,7 @@ namespace Saucebot.Services
             return await Task.Run(() =>
             {
                 var row = new ActionRowBuilder()
-                    .WithButton("Delete...", "delete:", ButtonStyle.Danger);
+                    .WithButton("Delete", "delete:", ButtonStyle.Danger);
                 return new ComponentBuilder().AddRow(row);
             });
         }
@@ -102,6 +103,38 @@ namespace Saucebot.Services
             if (page != maxpages)
                 builder.WithButton("Next", $"tags:{id}|{page + 1}", disabled: page == maxpages);
             return builder;
+        }
+
+        public static EmbedBuilder GetDetailsEmbed(string[] ids, int page, out ComponentBuilder builder, out string url)
+        {
+            R34Post current = BooruService.GetPostById(ids[page]).GetAwaiter().GetResult();
+            url = current.file_url != null ? current.file_url : "";
+
+            builder = new ComponentBuilder();
+            if (ids.Count() > 1)
+            {
+                builder.WithButton("Prev", $"details:{string.Join("-", ids)}|{page - 1}", ButtonStyle.Danger, disabled: page == 0);
+                builder.WithButton("＋ Save to Dms...", $"save:{$"[Link]({current.file_url})"}", ButtonStyle.Success);
+                builder.WithButton("Hide", "delete:", ButtonStyle.Danger);
+                builder.WithButton("Next", $"details:{string.Join("-", ids)}|{page + 1}", ButtonStyle.Primary, disabled: page + 1 == ids.Count());
+            }
+            else{
+                builder.WithButton("＋ Save to Dms...", $"save:{$"[Link]({current.file_url})"}", ButtonStyle.Success);
+                builder.WithButton("Delete", "delete:", ButtonStyle.Danger);
+            }
+
+
+            EmbedBuilder embedBuilder = new EmbedBuilder()
+            {
+                Title = "Rule34.xxx",
+                ImageUrl = (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".webp") || url.EndsWith(".gif")) ? url : (current.preview_url != null ? current.preview_url : ""),
+                Color = Color.Teal,
+                Description = $"```\n{current.tags}\n```"
+            };
+            embedBuilder.AddField("Link", $"https://rule34.xxx/index.php?page=post&s=view&id={current.id}", true);
+            embedBuilder.AddField("Score", current.score, true);
+            embedBuilder.AddField("Size", $"{current.width}x{current.height}px", true);
+            return embedBuilder;
         }
     }
 }

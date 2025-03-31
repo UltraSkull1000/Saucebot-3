@@ -35,9 +35,9 @@ namespace Saucebot.Modules
         {
             if(useDefaultFilters)
                 tags += " -ai_generated -incest -scat";
-            var image = await BooruService.GetImage(BooruService.Site.Rule34, tags);
+            var image = await BooruService.GetImage(tags);
             var builder = await ComponentService.GetPostComponents(image, tags);
-            await RespondAsync(image.file_url, components:builder.Build());
+            await RespondAsync($"[Link]({image.file_url})", components:builder.Build());
         }
 
         [SlashCommand("clear", "Clears messages from Saucebot from the channel", runMode:RunMode.Async)]
@@ -49,11 +49,11 @@ namespace Saucebot.Modules
                 await RespondAsync($"Deleting last chain!", ephemeral:true);
             else
                 await RespondAsync($"Deleting last {toDelete.Count()} messages!", ephemeral: true);
-            foreach (var m in toDelete)
+            foreach (IUserMessage m in toDelete)
             {
                 Thread.Sleep(500);
                 bool br = false;
-                var muid = m.Interaction;
+                var muid = m.InteractionMetadata;
                 if (muid != null)
                     br = true;
                 await Context.Channel.DeleteMessageAsync(m);
