@@ -6,7 +6,7 @@ namespace Saucebot.Services
         public static Dictionary<string, Queue<R34Post>> cache = new Dictionary<string, Queue<R34Post>>();
         public static Dictionary<string, int> pagenum = new Dictionary<string, int>();
         public static Random rand = new Random();
-        public static async Task<R34Post> GetImage(string tags)
+        public static async Task<R34Post?> GetImage(string tags)
         {
             if (cache.ContainsKey($"r34:{tags}")) // We have cached a page for this tag set.
             {
@@ -23,6 +23,9 @@ namespace Saucebot.Services
             string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}"; // Generate API address
 
             Queue<R34Post> page = await GetNewPage(uri, tags); // Fetches a page with the specified tags.
+            if(page.Count() == 0){
+                return null;
+            }
             R34Post returned = page.Dequeue(); // Pulls an image
             cache.Add($"r34:{tags}", page); // Caches the page that we pulled.
             return returned;
@@ -63,7 +66,7 @@ namespace Saucebot.Services
                 var r34R = JsonConvert.DeserializeObject<List<R34Post>>(json);
                 if (r34R == null)
                 {
-                    throw new NullReferenceException("Unable to convert json into proper list.");
+                    return new Queue<R34Post>();
                 }
                 var r34q = new Queue<R34Post>(r34R.OrderBy(x => rand.Next()));
                 pagenum.Add(uri, 0);

@@ -1,11 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Saucebot.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Saucebot.Modules
 {
@@ -14,28 +10,32 @@ namespace Saucebot.Modules
         public class TagAutocompleteHandler : AutocompleteHandler
         {
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
-            {
-                var data = ((string)autocompleteInteraction.Data.Current.Value).Split(' ');
-                string search = data.Last();
-                string?[]? tags = await TagService.GetTags(search);
-                if(tags == null)
-                    throw new NullReferenceException("GetTags returned no results");
+            {   
+                string[] data = ((string)autocompleteInteraction.Data.Current.Value).Split(' ');
+                string existing = string.Join(' ', data.Take(data.Count() - 1));
+                string search = data.Last(); // Retrieves user's entered content from data.
+                string?[]? tags = await TagService.GetTags(search); // Fetches autocomplete results for the user's input
+                if(tags == null) // We tried to connect to rule34, but were unable to get any results.
+                    return AutocompletionResult.FromError(new NullReferenceException("Cannot Reach Rule34.xxx for Autocomplete."));
                 List<AutocompleteResult> results = new List<AutocompleteResult>();
                 foreach (string? tag in tags){
-                    if(tag == null)
-                        continue;
-                    results.Add(new AutocompleteResult(tag,tag));
+                    if(tag != null)
+                        results.Add(new AutocompleteResult($"{existing} {tag}", $"{existing} {tag}"));
                 }
-                return AutocompletionResult.FromSuccess(results);
+                return AutocompletionResult.FromSuccess(results.Take(25));
             }
         }
 
+        [NsfwCommand(true)]
         [SlashCommand("r34", "Gets an Image from Rule34", runMode: RunMode.Async)]
-        public async Task Rule34([Summary("tags"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "", bool useDefaultFilters = true)
+        public async Task Rule34([Summary("tags"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "")
         {
-            if(useDefaultFilters)
-                tags += " -ai_generated -incest -scat";
+            tags += " -ai_generated";
             var image = await BooruService.GetImage(tags);
+            if(image == null){
+                await RespondAsync("No images with those tags!", ephemeral:true);
+                return;
+            }
             var builder = await ComponentService.GetPostComponents(image, tags);
             await RespondAsync($"[Link]({image.file_url})", components:builder.Build());
         }
