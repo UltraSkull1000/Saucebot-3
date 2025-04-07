@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 namespace Saucebot.Services
 {
-    public static class BooruService
+    public static class R34Service
     {
         public static Dictionary<string, Queue<R34Post>> cache = new Dictionary<string, Queue<R34Post>>();
         public static Dictionary<string, int> pagenum = new Dictionary<string, int>();

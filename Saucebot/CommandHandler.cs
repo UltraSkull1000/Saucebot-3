@@ -47,6 +47,7 @@ namespace Saucebot
         {
             await Task.Run(async () =>
             {
+                bool isDM = button.IsDMInteraction;
                 switch (button.Data.CustomId)
                 {
                     default:
@@ -55,7 +56,8 @@ namespace Saucebot
                     case var customID when customID.StartsWith("delete:"):
                         await button.DeferAsync(); // Acknowledge interaction
                         var thread = button.Message.Thread;
-                        if(thread != null){
+                        if (thread != null)
+                        {
                             await thread.DeleteAsync();
                         }
                         await button.Message.DeleteAsync(); // Delete source message
@@ -65,10 +67,10 @@ namespace Saucebot
                         int page = int.Parse(payload[1]); // page is a single-digit int less than five.
                         string[] ids = payload[0].Split('-'); // ids contains up to five elements.
 
-                        EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, out var components, out var url);
-                        var messageContent = $"details:{ids[page]}\n{$"[Link]({url})"}";
+                        EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, isDM, out var components, out var url);
+                        var messageContent = $"[Details]({url})";
 
-                        if (button.Message.Content.StartsWith("details:"))
+                        if (button.Message.Content.StartsWith("[Details]"))
                         {
                             await button.DeferAsync();
                             await button.Message.ModifyAsync(x =>
@@ -87,12 +89,12 @@ namespace Saucebot
                             count = 5; // Return 5 images, because we are requesting many.
 
                         string tags = customID.Substring(4); //trims the leading prefix and extracts the searchable tags
-                        var tagArray = tags.Split(' '); //array of individual tags
+                        var tagArray = tags.Split(' ').Where(x => x != ""); //array of individual tags
 
                         List<R34Post> images = new List<R34Post>(); // List of images to process
                         for (int i = 0; i < count; i++) // Grab Images
                         {
-                            var image = await BooruService.GetImage(tags); //fetches the next image from the booru service
+                            var image = await R34Service.GetImage(tags); //fetches the next image from the booru service
                             if (image == null && i == 0) //no more images left in the tag, or image fetching failed.
                             {
                                 await button.RespondAsync($"No more images with those tags!", ephemeral: true);
@@ -103,7 +105,7 @@ namespace Saucebot
                             images.Add(image);
                         }
 
-                        var builder = await ComponentService.GetPostComponents(images, tags); //fetches the button components from the component service
+                        var builder = await ComponentService.GetPostComponents(images, tags, isDM); //fetches the button components from the component service
                         string content = images.Count() > 1 ? string.Join(" ", images.Select(x => $"[{images.IndexOf(x) + 1}]({x.file_url})")) : $"[Link]({images.First().file_url})"; // Generates Message Content inline.
 
                         if ((button.Channel as IThreadChannel) == null && !button.IsDMInteraction) // We are in a primary text channel.
@@ -113,36 +115,42 @@ namespace Saucebot
                                 return;
                             if (button.Message.Thread == null) // The message does not have a pre-existing thread, create one. 
                             {
-                                var tagsFormatted = tagArray.Count() == 1 ? $"{button.User.Username}'s Saucebot Thread" : tagArray.Count() == 2 ? tagArray.First() : string.Join(", ", tagArray.Take(tagArray.Count() - 1));
+                                var tagsFormatted = tagArray.Count() <= 1 ? $"Rule34.xxx" : (tagArray.Count() == 2 ? tagArray.First() : string.Join(", ", tagArray.Take(tagArray.Count() - 1)));
                                 await button.RespondAsync($"Creating thread `{tagsFormatted}`...", ephemeral: true);
-                                var newThread = await channel.CreateThreadAsync(tagsFormatted, ThreadType.PublicThread, ThreadArchiveDuration.OneHour, button.Message);
+                                var newThread = await channel.CreateThreadAsync(tagsFormatted == null ? "Rule34.xxx" : tagsFormatted, ThreadType.PublicThread, ThreadArchiveDuration.OneHour, button.Message);
                                 await newThread.SendMessageAsync(content, components: builder.Build());
                             }
                             else // The message does have a pre-existing thread, so send the image there.
                             {
                                 await button.DeferAsync();
-                                await button.Message.Thread.SendMessageAsync(content, components: builder.Build());
+                                try
+                                {
+                                    await button.Message.Thread.SendMessageAsync(content, components: builder.Build());
+                                }
+                                catch // We were not permitted to send a message in that thread.
+                                {
+                                    await button.Channel.SendMessageAsync($"Cannot send messages in that thread!", flags: MessageFlags.Ephemeral);
+                                    await button.RespondAsync(content, components: builder.Build());
+                                }
                             }
                         }
                         else await button.RespondAsync(content, components: builder.Build()); // We are in a thread or dm
                         break;
-                    case var customID when customID.StartsWith("save:"):
+                    case var customID when customID.StartsWith("save:"): // We are sending the image to the user's dms.
+                        await button.DeferAsync(); // acknowledge interaction
+                        var id = customID.Substring(5); // grab image id
+                        var message = button.Message.Content; // usually a link to the image in a markdown format.
+                        var dmBuilder = await ComponentService.GetDMComponents(id);
                         try
                         {
-                            var message = button.Message.Content;
-                            if (customID.Substring(5) != "") // If the data is not empty, assume override.
-                                message = customID.Substring(5);
-
-                            var dmBuilder = await ComponentService.GetDMComponents();
                             await button.User.SendMessageAsync(message, components: dmBuilder.Build());
                         }
-                        catch (Exception e)
+                        catch // User has their dms turned off.
                         {
                             await button.RespondAsync("Can't send you a message!", ephemeral: true);
-                            await Program.Print(e.Message, ConsoleColor.Gray);
                         }
                         break;
-                    case var customID when customID.StartsWith("tags:"):
+                    case var customID when customID.StartsWith("tags:"): // Fetch the tags for the associated image.
                         await HandleTags(button, customID);
                         break;
                 }
@@ -169,7 +177,7 @@ namespace Saucebot
             string id = payload[0];
             int page = int.Parse(payload[1]);
 
-            var image = await BooruService.GetPostById(id);
+            var image = await R34Service.GetPostById(id);
             if (image.tags == null)
             {
                 throw new NullReferenceException("Image Tags are Blank.");

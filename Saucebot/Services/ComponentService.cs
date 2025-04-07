@@ -28,9 +28,9 @@ namespace Saucebot.Services
             return last;
         }
 
-        public static async Task<ComponentBuilder> GetPostComponents(R34Post image, string tags) => await GetPostComponents(new List<R34Post> { image }, tags);
+        public static async Task<ComponentBuilder> GetPostComponents(R34Post image, string tags, bool isDM = false) => await GetPostComponents(new List<R34Post> { image }, tags, isDM);
 
-        public static async Task<ComponentBuilder> GetPostComponents(List<R34Post> images, string tags)
+        public static async Task<ComponentBuilder> GetPostComponents(List<R34Post> images, string tags, bool isDM = false)
         {
             if (images.Count() == 1)
             {
@@ -41,7 +41,7 @@ namespace Saucebot.Services
                     .WithButton("Info...", $"details:{image.id}|0", ButtonStyle.Primary)
                     .WithButton("x5!~", $"may:{tags}", ButtonStyle.Success, PickNext());
                 var row2 = new ActionRowBuilder()
-                    .WithButton("＋", $"save:", ButtonStyle.Success)
+                    .WithButton("＋", $"save:{image.id}", ButtonStyle.Success, disabled: isDM)
                     .WithButton("Tags...", $"tags:{image.id}|0")
                     .WithButton("Rule34", url: $"https://rule34.xxx/index.php?page=post$s=list&tags={tags.Replace(' ', '+')}", style: ButtonStyle.Link)
                     .WithButton("Hide", "delete:", ButtonStyle.Danger);
@@ -57,42 +57,40 @@ namespace Saucebot.Services
                     var row1 = new ActionRowBuilder()
                         .WithButton("Another!~", $"r34:{tags}", ButtonStyle.Success, PickNext())
                         .WithButton("Rule34", url: $"https://rule34.xxx/index.php?page=post$s=list&tags={tags.Replace(' ', '+')}", style: ButtonStyle.Link)
-                        .WithButton("x5!", $"may:{tags}", ButtonStyle.Success, PickNext());
-                    var imageoptions = images.Select(
-                        x => new SelectMenuOptionBuilder()
-                        .WithLabel((images.IndexOf(x) + 1).ToString())
-                        .WithValue($"tags:{x.id}|0")
-                    ).ToList();
-                    var selectMenu = new SelectMenuBuilder()
-                        .WithType(ComponentType.SelectMenu)
-                        .WithCustomId("manytags:")
-                        .WithPlaceholder("Tags...")
-                        .WithMinValues(1)
-                        .WithMaxValues(1)
-                        .WithOptions(imageoptions);
+                        .WithButton("x5!~", $"may:{tags}", ButtonStyle.Success, PickNext());
                     var row2 = new ActionRowBuilder()
-                        .WithSelectMenu(selectMenu);
-                    var row3 = new ActionRowBuilder()
-                        .WithButton("More Details...", $"details:{string.Join("-", images.Select(x => x.id))}|0")
-                        .WithButton("＋ Save to Dms...", $"save:", ButtonStyle.Success)
+                        .WithButton("Save", $"save:{string.Join("-", images.Select(x => x.id))}")
+                        .WithButton("Info...", $"details:{string.Join("-", images.Select(x => x.id))}|0")
                         .WithButton("Hide", "delete:", ButtonStyle.Danger);
                     var builder = new ComponentBuilder()
                         .AddRow(row1)
-                        .AddRow(row2)
-                        .AddRow(row3);
+                        .AddRow(row2);
                     return builder;
                 });
             }
 
         }
 
-        public static async Task<ComponentBuilder> GetDMComponents()
+        public static async Task<ComponentBuilder> GetDMComponents(string id)
         {
             return await Task.Run(() =>
             {
-                var row = new ActionRowBuilder()
-                    .WithButton("Delete", "delete:", ButtonStyle.Danger);
-                return new ComponentBuilder().AddRow(row);
+                var ids = id.Split("-");
+                if (ids.Count() > 1)
+                {
+                    var row = new ActionRowBuilder()
+                        .WithButton("Info...", $"details:{id}|0", ButtonStyle.Primary)
+                        .WithButton("Delete", "delete:", ButtonStyle.Danger);
+                    return new ComponentBuilder().AddRow(row);
+                }
+                else
+                {
+                    var row = new ActionRowBuilder()
+                        .WithButton("Info...", $"details:{id}|0", ButtonStyle.Primary)
+                        .WithButton("Link", url: $"https://rule34.xxx/index.php?page=post&s=view&id={id}", style: ButtonStyle.Link)
+                        .WithButton("Delete", "delete:", ButtonStyle.Danger);
+                    return new ComponentBuilder().AddRow(row);
+                }
             });
         }
         public static ComponentBuilder GetTagComponents(string id, int page, int maxpages)
@@ -105,21 +103,22 @@ namespace Saucebot.Services
             return builder;
         }
 
-        public static EmbedBuilder GetDetailsEmbed(string[] ids, int page, out ComponentBuilder builder, out string url)
+        public static EmbedBuilder GetDetailsEmbed(string[] ids, int page, bool isDM, out ComponentBuilder builder, out string url)
         {
-            R34Post current = BooruService.GetPostById(ids[page]).GetAwaiter().GetResult();
+            R34Post current = R34Service.GetPostById(ids[page]).GetAwaiter().GetResult();
             url = current.file_url != null ? current.file_url : "";
 
             builder = new ComponentBuilder();
             if (ids.Count() > 1)
             {
                 builder.WithButton("Prev", $"details:{string.Join("-", ids)}|{page - 1}", ButtonStyle.Danger, disabled: page == 0);
-                builder.WithButton("＋ Save to Dms...", $"save:{$"[Link]({current.file_url})"}", ButtonStyle.Success);
+                builder.WithButton("＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success);
                 builder.WithButton("Hide", "delete:", ButtonStyle.Danger);
                 builder.WithButton("Next", $"details:{string.Join("-", ids)}|{page + 1}", ButtonStyle.Primary, disabled: page + 1 == ids.Count());
             }
-            else{
-                builder.WithButton("＋ Save to Dms...", $"save:{$"[Link]({current.file_url})"}", ButtonStyle.Success);
+            else
+            {
+                builder.WithButton("＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success, disabled: isDM);
                 builder.WithButton("Delete", "delete:", ButtonStyle.Danger);
             }
 

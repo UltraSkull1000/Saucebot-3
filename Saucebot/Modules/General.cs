@@ -31,12 +31,12 @@ namespace Saucebot.Modules
         public async Task Rule34([Summary("tags"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "")
         {
             tags += " -ai_generated";
-            var image = await BooruService.GetImage(tags);
+            var image = await R34Service.GetImage(tags);
             if(image == null){
                 await RespondAsync("No images with those tags!", ephemeral:true);
                 return;
             }
-            var builder = await ComponentService.GetPostComponents(image, tags);
+            var builder = await ComponentService.GetPostComponents(image, tags, Context.Interaction.IsDMInteraction);
             await RespondAsync($"[Link]({image.file_url})", components:builder.Build());
         }
 
@@ -52,6 +52,8 @@ namespace Saucebot.Modules
             foreach (IUserMessage m in toDelete)
             {
                 Thread.Sleep(500);
+                if(m.Thread != null)
+                    await m.Thread.DeleteAsync();
                 bool br = false;
                 var muid = m.InteractionMetadata;
                 if (muid != null)

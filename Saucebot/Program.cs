@@ -22,14 +22,7 @@ namespace Saucebot
             currentLog = $"client_{DateTime.Now.ToFileTimeUtc()}.txt"; // Name and Create current log file. Opens and closes in order to preserve integrity
             File.Create($"logs/{currentLog}").Close();
 
-            // Client Token Init
-            if (!File.Exists("token.txt")) // Checking if the token has been saved for the bot yet
-            {
-                Console.Write("Please Enter your Bot's Token: ");
-                string? t = Console.ReadLine(); // Accepts the token
-                File.WriteAllText("token.txt", t); // Creates and writes the token to the token.txt 
-                Console.WriteLine();
-            }
+            SaucebotConfig config = SaucebotConfig.GetConfig();
 
             // Client Init
             _client = new DiscordSocketClient(); // Initializes the client for this instance. 
@@ -39,7 +32,7 @@ namespace Saucebot
             _client.JoinedGuild += LogGuildJoin;
             _client.LeftGuild += LogGuildLeave;
 
-            await _client.LoginAsync(TokenType.Bot, File.ReadAllText("token.txt")); // Set the token
+            await _client.LoginAsync(TokenType.Bot, config.GetToken()); // Set the token
             await _client.StartAsync(); // Begin establishing connection
 
             while (_client.ConnectionState != ConnectionState.Connected) // Wait until the connection is established
@@ -70,6 +63,8 @@ namespace Saucebot
                     break;
                 case LogSeverity.Warning:
                     await Print(arg.Message, ConsoleColor.Yellow);
+                    if (arg.Message == "A supplied token was invalid.")
+                        Environment.Exit(0);
                     break;
                 case LogSeverity.Error:
                 case LogSeverity.Critical:
@@ -92,6 +87,29 @@ namespace Saucebot
                     Writer.WriteLine($"{DateTime.Now.ToLocalTime()} >> {message}");
                 }
             });
+        }
+
+        public static string Prompt(string query, bool emptyAccepted = false)
+        {
+            string? answer = null;
+            while (answer == null)
+            {
+                Console.Write(query);
+                answer = Console.ReadLine();
+                if(answer == null && emptyAccepted)
+                    answer = "";
+            }
+            return answer;
+        }
+
+        public static bool YNPrompt(string query)
+        {
+            string answer = Prompt(query).ToLowerInvariant();
+            if (answer == "y")
+                return true;
+            if (answer == "n")
+                return false;
+            return YNPrompt(query);
         }
     }
 }
