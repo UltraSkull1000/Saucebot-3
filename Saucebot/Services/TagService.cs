@@ -7,7 +7,7 @@ namespace Saucebot.Services
     {
         private static HttpClient tagClient = new()
         {
-            BaseAddress = new Uri("https://ac.rule34.xxx/")
+            BaseAddress = new Uri("https://api.rule34.xxx/")
         };
 
         public static async Task<string?[]?> GetTags(string query = "")

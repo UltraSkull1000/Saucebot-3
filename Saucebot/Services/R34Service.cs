@@ -6,6 +6,8 @@ namespace Saucebot.Services
         public static Dictionary<string, Queue<R34Post>> cache = new Dictionary<string, Queue<R34Post>>();
         public static Dictionary<string, int> pagenum = new Dictionary<string, int>();
         public static Random rand = new Random();
+        private static SaucebotConfig config = SaucebotConfig.GetConfig();
+        private static string api_key = config.GetBooruToken(SaucebotConfig.Site.Rule34);
         public static async Task<R34Post?> GetImage(string tags)
         {
             if (cache.ContainsKey($"r34:{tags}")) // We have cached a page for this tag set.
@@ -20,10 +22,11 @@ namespace Saucebot.Services
             }
 
             // We don't have a cached page for this, start a new one.
-            string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}"; // Generate API address
+            string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}&&api_key={api_key}&user_id=5584446"; // Generate API address
 
             Queue<R34Post> page = await GetNewPage(uri, tags); // Fetches a page with the specified tags.
-            if(page.Count() == 0){
+            if (page.Count() == 0)
+            {
                 return null;
             }
             R34Post returned = page.Dequeue(); // Pulls an image
@@ -38,7 +41,7 @@ namespace Saucebot.Services
             var c34 = cache[$"r34:{tags}"]; // Grabs the cached page.
             if (c34.Count() < 1) // There are no images on this page.
             {
-                string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}"; // Regenerate URI
+                string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}&api_key={api_key}&user_id=5584446"; // Regenerate URI
                 var q = GetNewPage(uri, tags).GetAwaiter().GetResult(); // Fetch a new page from the site
                 cache[$"r34:{tags}"] = q; // Cache the page.
                 return cache[$"r34:{tags}"];
@@ -84,7 +87,7 @@ namespace Saucebot.Services
 
         public static async Task<R34Post> GetPostById(string id)
         {
-            var uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&id={id}";
+            var uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&id={id}&api_key={api_key}&user_id=5584446";
 
             HttpClient client = new HttpClient();
             HttpResponseMessage resp = await client.GetAsync(uri);
@@ -112,7 +115,7 @@ namespace Saucebot.Services
         {
             if (cache.ContainsKey($"collection:{parentid}"))
                 return cache[$"collection:{parentid}"];
-            var uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags=parent:{parentid}";
+            var uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags=parent:{parentid}&api_key={api_key}&user_id=5584446";
 
             HttpClient client = new HttpClient();
             HttpResponseMessage resp = await client.GetAsync(uri);

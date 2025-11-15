@@ -19,8 +19,7 @@ namespace Saucebot
             E621
         }
         [JsonInclude]
-        private Dictionary<Site, string> BooruTokens { get; } = new Dictionary<Site, string>();
-
+        private Dictionary<Site, string> BooruTokens { get; set; } = new Dictionary<Site, string>();
         public static SaucebotConfig GetConfig()
         {
             if (File.Exists("config.json"))

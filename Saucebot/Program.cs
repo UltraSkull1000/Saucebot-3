@@ -14,6 +14,8 @@ namespace Saucebot
         public static StatusHandler? _statusHandler;
         private static string currentLog = "";
 
+        public static string api_key = "";
+
         public static void Main() => MainAsync().GetAwaiter().GetResult();
         public static async Task MainAsync()
         {
