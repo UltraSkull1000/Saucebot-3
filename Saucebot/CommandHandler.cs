@@ -63,25 +63,21 @@ namespace Saucebot
                         await button.Message.DeleteAsync(); // Delete source message
                         break;
                     case var customID when customID.StartsWith("details:"):
+                        await button.DeferAsync(); // Acknowledge interaction
                         var payload = customID.Substring(8).Split('|'); // Payload is split into two components, the ids and the page.
                         int page = int.Parse(payload[1]); // page is a single-digit int less than five.
                         string[] ids = payload[0].Split('-'); // ids contains up to five elements.
 
-                        EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, isDM, out var components, out var url);
+                        EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, out var components, out var url, button.IsDMInteraction);
                         var messageContent = $"[Details]({url})";
 
-                        if (button.Message.Content.StartsWith("[Details]"))
+                        await button.Message.ModifyAsync(x =>
                         {
-                            await button.DeferAsync();
-                            await button.Message.ModifyAsync(x =>
-                            {
-                                x.Content = messageContent;
-                                x.Embed = embed.Build();
-                                x.Components = components.Build();
-                            });
-                        }
-                        else
-                            await button.RespondAsync(messageContent, embed: embed.Build(), components: components.Build());
+                            x.Content = messageContent;
+                            x.Embed = embed.Build();
+                            x.Components = components.Build();
+                        });
+
                         break;
                     case var customID when customID.StartsWith("r34:") || customID.StartsWith("may:"): // Get another image from rule34.
                         int count = 1; // Return 1 image
@@ -94,10 +90,11 @@ namespace Saucebot
                         List<R34Post> images = new List<R34Post>(); // List of images to process
                         for (int i = 0; i < count; i++) // Grab Images
                         {
+                            await button.DeferLoadingAsync(); // Acknowledge interaction
                             var image = await R34Service.GetImage(tags); //fetches the next image from the booru service
                             if (image == null && i == 0) //no more images left in the tag, or image fetching failed.
                             {
-                                await button.RespondAsync($"No more images with those tags!", ephemeral: true);
+                                await button.FollowupAsync($"No more images with those tags!", ephemeral: true);
                                 return;
                             }
                             else if (image == null)
@@ -116,13 +113,12 @@ namespace Saucebot
                             if (button.Message.Thread == null) // The message does not have a pre-existing thread, create one. 
                             {
                                 var tagsFormatted = tagArray.Count() <= 1 ? $"Rule34.xxx" : (tagArray.Count() == 2 ? tagArray.First() : string.Join(", ", tagArray.Take(tagArray.Count() - 1)));
-                                await button.RespondAsync($"Creating thread `{tagsFormatted}`...", ephemeral: true);
+                                await button.FollowupAsync($"Creating thread `{tagsFormatted}`...", ephemeral: true);
                                 var newThread = await channel.CreateThreadAsync(tagsFormatted == null ? "Rule34.xxx" : tagsFormatted, ThreadType.PublicThread, ThreadArchiveDuration.OneHour, button.Message);
                                 await newThread.SendMessageAsync(content, components: builder.Build());
                             }
                             else // The message does have a pre-existing thread, so send the image there.
                             {
-                                await button.DeferAsync();
                                 try
                                 {
                                     await button.Message.Thread.SendMessageAsync(content, components: builder.Build());
@@ -130,11 +126,11 @@ namespace Saucebot
                                 catch // We were not permitted to send a message in that thread.
                                 {
                                     await button.Channel.SendMessageAsync($"Cannot send messages in that thread!", flags: MessageFlags.Ephemeral);
-                                    await button.RespondAsync(content, components: builder.Build());
+                                    await button.FollowupAsync(content, components: builder.Build());
                                 }
                             }
                         }
-                        else await button.RespondAsync(content, components: builder.Build()); // We are in a thread or dm
+                        else await button.FollowupAsync(content, components: builder.Build()); // We are in a thread or dm
                         break;
                     case var customID when customID.StartsWith("save:"): // We are sending the image to the user's dms.
                         await button.DeferAsync(); // acknowledge interaction
@@ -147,11 +143,23 @@ namespace Saucebot
                         }
                         catch // User has their dms turned off.
                         {
-                            await button.RespondAsync("Can't send you a message!", ephemeral: true);
+                            await button.FollowupAsync("Can't send you a message!", ephemeral: true);
                         }
                         break;
                     case var customID when customID.StartsWith("tags:"): // Fetch the tags for the associated image.
                         await HandleTags(button, customID);
+                        break;
+                    case var customID when customID.StartsWith("edit:"):
+                        await button.DeferAsync(); // acknowledge interaction
+                        var img = customID.Substring(5); // grab image id
+                        var post = await R34Service.GetPostById(img);
+                        var dmB = await ComponentService.GetDMComponents(img);
+                        await button.Message.ModifyAsync(x =>
+                        {
+                           x.Content = $"[Image]({post.file_url})";
+                           x.Components = dmB.Build();
+                           x.Embeds = null;
+                        });
                         break;
                 }
             });

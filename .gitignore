@@ -363,5 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 token.txt
-config.json
-sampleconfig.json
+*config.json

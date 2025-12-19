@@ -103,7 +103,7 @@ namespace Saucebot.Services
             return builder;
         }
 
-        public static EmbedBuilder GetDetailsEmbed(string[] ids, int page, bool isDM, out ComponentBuilder builder, out string url)
+        public static EmbedBuilder GetDetailsEmbed(string[] ids, int page, out ComponentBuilder builder, out string url, bool isDM = false)
         {
             R34Post current = R34Service.GetPostById(ids[page]).GetAwaiter().GetResult();
             url = current.file_url != null ? current.file_url : "";
@@ -111,14 +111,16 @@ namespace Saucebot.Services
             builder = new ComponentBuilder();
             if (ids.Count() > 1)
             {
-                builder.WithButton("Prev", $"details:{string.Join("-", ids)}|{page - 1}", ButtonStyle.Danger, disabled: page == 0);
-                builder.WithButton("＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success);
+                var prevcount = (page - 1 > 0) ? page - 1 : ids.Count() - 1;
+                var nextcount = (page + 1 < ids.Count()) ? page + 1 : 0;
+                builder.WithButton("Prev", $"details:{string.Join("-", ids)}|{prevcount}", ButtonStyle.Danger, disabled: prevcount < 0);
+                builder.WithButton(isDM ? "Less Info..." : "＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success);
                 builder.WithButton("Hide", "delete:", ButtonStyle.Danger);
-                builder.WithButton("Next", $"details:{string.Join("-", ids)}|{page + 1}", ButtonStyle.Primary, disabled: page + 1 == ids.Count());
+                builder.WithButton("Next", $"details:{string.Join("-", ids)}|{nextcount}", ButtonStyle.Primary, disabled: nextcount >= ids.Count());
             }
             else
             {
-                builder.WithButton("＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success, disabled: isDM);
+                builder.WithButton(isDM ? "Less Info..." : "＋ Save to Dms...", $"edit:{current.id}", ButtonStyle.Success);
                 builder.WithButton("Delete", "delete:", ButtonStyle.Danger);
             }
 

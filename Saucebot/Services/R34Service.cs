@@ -13,12 +13,12 @@ namespace Saucebot.Services
             if (cache.ContainsKey($"r34:{tags}")) // We have cached a page for this tag set.
             {
                 Queue<R34Post>? cached = GetCached(tags); // Attempt to retrieve the cached page. Will fetch a new page if the cached page was empty.
-                if (cached != null) // The cached page had entries!
+                if (cached != null && cached.Count() > 0) // The cached page had entries!
                 {
                     R34Post random = cached.Dequeue(); // The order was randomized on fetch, so we just pull from the top of the queue. 
                     return random;
                 }
-                else throw new NullReferenceException($"Unable to fetch cached images."); // Usually this means that you've pulled all of the images that exist in the tag.
+                else cache.Remove($"r34:{tags}"); // Usually this means that you've pulled all of the images that exist in the tag.
             }
 
             // We don't have a cached page for this, start a new one.
