@@ -41,6 +41,7 @@ namespace Saucebot
         {
             var ctx = new SocketInteractionContext(_client, arg);
             await _interactionService.ExecuteCommandAsync(ctx, _serviceProvider);
+            return;
         }
 
         private async Task HandleButton(SocketMessageComponent button) // Handles Button components from Interactions
@@ -71,26 +72,33 @@ namespace Saucebot
                         EmbedBuilder embed = ComponentService.GetDetailsEmbed(ids, page, out var components, out var url, button.IsDMInteraction);
                         var messageContent = $"[Details]({url})";
 
-                        await button.Message.ModifyAsync(x =>
+                        if ((isDM && ids.Count() == 1) || button.Message.Content.Contains("Details")) // Modify the existing message, updating its details
                         {
-                            x.Content = messageContent;
-                            x.Embed = embed.Build();
-                            x.Components = components.Build();
-                        });
+                            await button.Message.ModifyAsync(x =>
+                            {
+                                x.Content = messageContent;
+                                x.Embed = embed.Build();
+                                x.Components = components.Build();
+                            });
+                        }
+                        else // Create a new message
+                        {
+                            await button.FollowupAsync(messageContent, embed: embed.Build(), components: components.Build());
+                        }
 
                         break;
-                    case var customID when customID.StartsWith("r34:") || customID.StartsWith("may:"): // Get another image from rule34.
+                    case var customID when customID.StartsWith("r34:") || customID.StartsWith("may:") || customID.StartsWith("my9:"): // Get another image from rule34.
                         int count = 1; // Return 1 image
                         if (customID.StartsWith("may:"))
                             count = 5; // Return 5 images, because we are requesting many.
-
+    
                         string tags = customID.Substring(4); //trims the leading prefix and extracts the searchable tags
                         var tagArray = tags.Split(' ').Where(x => x != ""); //array of individual tags
 
                         List<R34Post> images = new List<R34Post>(); // List of images to process
+                        await button.DeferAsync(); // Acknowledge interaction
                         for (int i = 0; i < count; i++) // Grab Images
                         {
-                            await button.DeferLoadingAsync(); // Acknowledge interaction
                             var image = await R34Service.GetImage(tags); //fetches the next image from the booru service
                             if (image == null && i == 0) //no more images left in the tag, or image fetching failed.
                             {
@@ -112,7 +120,7 @@ namespace Saucebot
                                 return;
                             if (button.Message.Thread == null) // The message does not have a pre-existing thread, create one. 
                             {
-                                var tagsFormatted = tagArray.Count() <= 1 ? $"Rule34.xxx" : (tagArray.Count() == 2 ? tagArray.First() : string.Join(", ", tagArray.Take(tagArray.Count() - 1)));
+                                var tagsFormatted = tagArray.Count() <= 0 ? $"Rule34.xxx" : (tagArray.Count() == 1 ? tagArray.First() : string.Join(", ", tagArray));
                                 await button.FollowupAsync($"Creating thread `{tagsFormatted}`...", ephemeral: true);
                                 var newThread = await channel.CreateThreadAsync(tagsFormatted == null ? "Rule34.xxx" : tagsFormatted, ThreadType.PublicThread, ThreadArchiveDuration.OneHour, button.Message);
                                 await newThread.SendMessageAsync(content, components: builder.Build());
@@ -156,13 +164,14 @@ namespace Saucebot
                         var dmB = await ComponentService.GetDMComponents(img);
                         await button.Message.ModifyAsync(x =>
                         {
-                           x.Content = $"[Image]({post.file_url})";
-                           x.Components = dmB.Build();
-                           x.Embeds = null;
+                            x.Content = $"[Link]({post.file_url})";
+                            x.Components = dmB.Build();
+                            x.Embeds = null;
                         });
                         break;
                 }
             });
+            return;
         }
 
         private async Task HandleSelectMenu(SocketMessageComponent selectMenu) // Handles Select menu components from Interactions
@@ -177,6 +186,7 @@ namespace Saucebot
                     await HandleTags(selectMenu, customID); // Handles Tags.
                     break;
             }
+            return;
         }
 
         private async Task HandleTags(SocketInteraction interaction, string data)
@@ -199,6 +209,7 @@ namespace Saucebot
             if (output == "")
                 return;
             await interaction.RespondAsync($"{output}", ephemeral: true, components: ComponentService.GetTagComponents(id, page, tags.Length / 15).Build());
+            return;
         }
     }
 }

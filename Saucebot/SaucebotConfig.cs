@@ -15,8 +15,7 @@ namespace Saucebot
         private List<string> Statuses { get; set; } = new List<string>();
         public enum Site
         {
-            Rule34,
-            E621
+            Rule34
         }
         [JsonInclude]
         private Dictionary<Site, string> BooruTokens { get; set; } = new Dictionary<Site, string>();

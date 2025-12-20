@@ -114,7 +114,7 @@ namespace Saucebot.Services
                 var prevcount = (page - 1 > 0) ? page - 1 : ids.Count() - 1;
                 var nextcount = (page + 1 < ids.Count()) ? page + 1 : 0;
                 builder.WithButton("Prev", $"details:{string.Join("-", ids)}|{prevcount}", ButtonStyle.Danger, disabled: prevcount < 0);
-                builder.WithButton(isDM ? "Less Info..." : "＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success);
+                builder.WithButton(isDM ? "＋ Save..." : "＋ Save to Dms...", $"save:{current.id}", ButtonStyle.Success);
                 builder.WithButton("Hide", "delete:", ButtonStyle.Danger);
                 builder.WithButton("Next", $"details:{string.Join("-", ids)}|{nextcount}", ButtonStyle.Primary, disabled: nextcount >= ids.Count());
             }

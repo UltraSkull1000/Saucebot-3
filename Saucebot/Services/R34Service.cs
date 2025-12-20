@@ -10,6 +10,8 @@ namespace Saucebot.Services
         private static string api_key = config.GetBooruToken(SaucebotConfig.Site.Rule34);
         public static async Task<R34Post?> GetImage(string tags)
         {
+            string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}&&api_key={api_key}&user_id=5584446"; // Generate API address
+
             if (cache.ContainsKey($"r34:{tags}")) // We have cached a page for this tag set.
             {
                 Queue<R34Post>? cached = GetCached(tags); // Attempt to retrieve the cached page. Will fetch a new page if the cached page was empty.
@@ -18,12 +20,13 @@ namespace Saucebot.Services
                     R34Post random = cached.Dequeue(); // The order was randomized on fetch, so we just pull from the top of the queue. 
                     return random;
                 }
-                else cache.Remove($"r34:{tags}"); // Usually this means that you've pulled all of the images that exist in the tag.
+                else { // Usually this means that you've pulled all of the images that exist in the tag.
+                    cache.Remove($"r34:{tags}"); 
+                    pagenum.Remove(uri);
+                }
             }
 
             // We don't have a cached page for this, start a new one.
-            string uri = $"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={tags.Replace(' ', '+')}&&api_key={api_key}&user_id=5584446"; // Generate API address
-
             Queue<R34Post> page = await GetNewPage(uri, tags); // Fetches a page with the specified tags.
             if (page.Count() == 0)
             {

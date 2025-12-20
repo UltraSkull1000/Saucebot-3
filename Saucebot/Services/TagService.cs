@@ -12,36 +12,17 @@ namespace Saucebot.Services
 
         public static async Task<string?[]?> GetTags(string query = "")
         {
-            if (query == "")
-            { // User has not input a tag yet
-                return GetPopular();
-            }
-            else
+            using HttpResponseMessage resp = await tagClient.GetAsync($"autocomplete.php?q={query}");
+            if (!resp.IsSuccessStatusCode)
             {
-                using HttpResponseMessage resp = await tagClient.GetAsync($"autocomplete.php?q={query}");
-                if (!resp.IsSuccessStatusCode)
-                {
-                    throw new WebException(resp.ReasonPhrase);
-                }
-                string jsonResponse = await resp.Content.ReadAsStringAsync();
-                var actags = Tag.FromJson(jsonResponse);
-                if(actags == null)
-                    throw new NullReferenceException("No tags that match the query.");
-                var array = actags.Select(x => x.Value).ToArray();
-                return array;
+                throw new WebException(resp.ReasonPhrase);
             }
-        }
-
-        public static string[] GetPopular()
-        {
-            return new string[] {
-            "ass",
-            "big_breasts",
-            "big_thighs",
-            "chubby",
-            "curvy",
-            "cum"
-        };
+            string jsonResponse = await resp.Content.ReadAsStringAsync();
+            var actags = Tag.FromJson(jsonResponse);
+            if (actags == null)
+                throw new NullReferenceException("No tags that match the query.");
+            var array = actags.Select(x => x.Value).ToArray();
+            return array;
         }
     }
 }

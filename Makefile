@@ -3,8 +3,8 @@
 build ./Saucebot/Saucebot.sln:
 	dotnet build 
 
-run ./Saucebot/bin/Debug/net8.0/Saucebot.dll:
-	dotnet ./Saucebot/bin/Debug/net8.0/Saucebot.dll
+run ./Saucebot/bin/Debug/net10.0/Saucebot.dll:
+	dotnet ./Saucebot/bin/Debug/net10.0/Saucebot.dll
 
 clean:
 	rm -rf ./Saucebot/bin
