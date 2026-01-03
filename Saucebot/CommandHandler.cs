@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualBasic;
 using Saucebot.Modules;
 using Saucebot.Services;
 using System.Net.Sockets;
@@ -41,6 +42,7 @@ namespace Saucebot
         {
             var ctx = new SocketInteractionContext(_client, arg);
             await _interactionService.ExecuteCommandAsync(ctx, _serviceProvider);
+            if(arg.Type == InteractionType.ApplicationCommand) await Program.Print($"<{ctx.User.Username}> used an application command in <#{ctx.Channel.Name}, ({ctx.Channel.Id})> ", ConsoleColor.DarkGray);
             return;
         }
 
@@ -171,6 +173,7 @@ namespace Saucebot
                         break;
                 }
             });
+            await Program.Print($"<{button.User.Username}> used {button.Data.CustomId} in <#{button.Channel.Name}, ({button.ChannelId})>", ConsoleColor.DarkGray);
             return;
         }
 

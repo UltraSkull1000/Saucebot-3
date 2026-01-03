@@ -13,9 +13,6 @@ namespace Saucebot
         public static CommandHandler? _commandHandler; // Class for accepting events from the Client and executing commands and interactions.
         public static StatusHandler? _statusHandler;
         private static string currentLog = "";
-
-        public static string api_key = "";
-
         public static void Main() => MainAsync().GetAwaiter().GetResult();
         public static async Task MainAsync()
         {
@@ -35,6 +32,8 @@ namespace Saucebot
             _client.JoinedGuild += LogGuildJoin;
             _client.LeftGuild += LogGuildLeave;
 
+            _statusHandler = new StatusHandler(_client, config.GetStatuses());
+
             await _client.LoginAsync(TokenType.Bot, config.GetToken()); // Set the token
             await _client.StartAsync(); // Begin establishing connection
 
@@ -48,7 +47,6 @@ namespace Saucebot
             await Print($"Do Not Use the link above for public invites! Find out exactly what permissions the bot needs in order for it to function, and generate a link here: https://discordapi.com/permissions.html#0", ConsoleColor.Red, false);
 
             _commandHandler = new CommandHandler(_client); // Initialize Command Handler
-            _statusHandler = new StatusHandler(_client, config.GetStatuses());
 
             await Task.Delay(-1); // Keep Running Indefinitely.
         }

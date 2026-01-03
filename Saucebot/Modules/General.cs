@@ -28,15 +28,16 @@ namespace Saucebot.Modules
 
         [NsfwCommand(true)]
         [SlashCommand("r34", "Gets an Image from Rule34", runMode: RunMode.Async)]
-        public async Task Rule34([Summary("The tags that you wish to search in order to narrow your results!"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "")
+        public async Task Rule34([Summary("Tags", "Narrow your search! Uses conventions from https://rule34.xxx/index.php?page=help&topic=cheatsheet"), Autocomplete(typeof(TagAutocompleteHandler))] string tags = "")
         {
+            await DeferAsync();
             var image = await R34Service.GetImage(tags);
             if(image == null){
-                await RespondAsync("No images with those tags!", ephemeral:true);
+                await FollowupAsync("No images with those tags!", ephemeral:true);
                 return;
             }
             var builder = await ComponentService.GetPostComponents(image, tags, Context.Interaction.IsDMInteraction);
-            await RespondAsync($"[Link]({image.file_url})", components:builder.Build());
+            await FollowupAsync($"[Link]({image.file_url})", components:builder.Build());
         }
 
         [SlashCommand("clear", "Clears messages from Saucebot from the channel", runMode:RunMode.Async)]
